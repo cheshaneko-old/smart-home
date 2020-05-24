@@ -1,0 +1,237 @@
+<html>
+	<head>
+		<title>Select Wi-Fi network</title>
+	<style>
+		.item {
+			margin-top: .25rem;
+			margin-bottom: .25rem;
+			display: block;
+			padding: .5rem 1rem;
+			font-size: 3rem;
+			line-height: 1.5;
+			border-radius: .3rem;
+			color: #fff;
+			background-color: #007bff;
+			border-color: #007bff;
+			text-align: center;
+			vertical-align: middle;
+			transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+			border: 1px solid transparent;
+		}
+
+		.buttons {
+			cursor: pointer;
+		}
+
+		.buttons:hover {
+			background-color: rgb(0, 92, 191);
+		}
+
+		.area {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+			position: relative;
+			flex: 1 1 auto;
+			width: 1%;
+			min-width: 0;
+			margin-bottom: 0;
+			display: block;
+			height: calc(1.5em + .75rem + 2px);
+			padding: .375rem .75rem;
+			font-size: 3rem;
+			font-weight: 400;
+			line-height: 1.5;
+			color: #495057;
+			background-color: #fff;
+			background-clip: padding-box;
+			border: 1px solid #ced4da;
+			border-radius: .25rem;
+			transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+
+		}
+
+		.input-btn {
+			margin-left: -1px;
+			display: flex;
+			box-sizing: border-box;
+		}
+
+		.btn {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+			cursor: pointer;
+			position: relative;
+			z-index: 2;
+			color: #6c757d;
+			display: inline-block;
+			font-weight: 400;
+			text-align: center;
+			vertical-align: middle;
+			user-select: none;
+			background-color: transparent;
+			border: 1px solid transparent;
+			border-color: #6c757d;
+			padding: .375rem .75rem;
+			font-size: 3rem;
+			line-height: 1.5;
+			border-radius: .25rem;
+			transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+
+		}
+
+		.btn:hover {
+			background-color: #e9ecef;
+		}
+
+		.input-group {
+			margin-bottom: 1rem!important;
+			position: relative;
+			display: flex;
+			flex-wrap: wrap;
+			align-items: stretch;
+			width: 100%;
+		}
+
+		.spinner > div {
+			width: 40px;
+			height: 40px;
+			background-color: #FFF;
+			border-radius: 100%;
+			display: inline-block;
+			animation: bouncedelay 1.3s infinite ease-in-out;
+			animation-fill-mode: both;
+		}
+		.spinner div:first-child {
+			animation-delay: -0.32s;
+		}
+		.spinner div:nth-child(2) {
+			animation-delay: -0.16s;
+		}
+		@keyframes bouncedelay {
+			0%, 80%, 100% {  opacity: 0.1; }
+			40% {  opacity: 1; }
+		}
+	</style>
+	<script>
+		async function getWiFiConnections() {
+			await sleep(2000);
+			return [
+				{name: "Some1", SSID: "e34gg4g2"},
+				{name: "Some2", SSID: "e34gg4g2"},
+				{name: "Some3", SSID: "e34gg4g2"},
+				{name: "Some4", SSID: "e34gg4g2"},
+				{name: "Some5", SSID: "e34gg4g2"}
+			]
+		}
+
+		async function checkConnection(SSID, password) {
+			await sleep(5000);
+			return "OK"
+		}
+
+		function sleep(ms) {
+			return new Promise(resolve => setTimeout(resolve, ms));
+		}
+
+		async function sendConnection(SSID) {
+			var password = document.getElementById("password-input-field").value;
+			console.log("Send " + SSID + " " + password)
+			showElement("placeHolder");
+			var input = document.getElementById("password-input");
+			input.style.display = "none";
+			document.getElementById("connections").after(input)
+			document.getElementById("connections").innerHTML = "";
+			document.querySelector("#placeHolder a").textContent = "Connecting..."
+			var status = await checkConnection(SSID, password);
+			if (status === "OK") {
+				hideElement("placeHolder");
+				showSuccessMessage("Connected! Wait for reload.");
+			} else {
+				showConnections();
+				showErrorMessage("Failed to connect. Try againe.")
+			}
+		}
+
+		function askPassword(element, SSID) {
+			var input = document.getElementById("password-input");
+			element.after(input);
+			input.style.display = "flex";
+			document.getElementById("password-input-field").focus();
+			document.getElementById("send").onclick = () => sendConnection(SSID)
+		}
+
+
+		function createConElement(name, SSID) {
+			var el = document.createElement("div");
+			el.innerHTML = name;
+			el.className = "item buttons";
+			el.onclick = () => askPassword(el, SSID);
+			return el;
+		}
+
+		async function showConnections() {
+			document.querySelector("#placeHolder a").textContent = "Loading Wi-Fi connections..."
+			showElement("placeHolder");
+			var connections = await getWiFiConnections();
+			hideElement("placeHolder");
+			var conHolder = document.getElementById("connections");
+			connections.forEach(con => conHolder.appendChild(createConElement(con.name, con.SSID)));
+		}
+
+		async function init() {
+			await showConnections();
+		}
+
+		function showElement(elementId) {
+			var el = document.getElementById(elementId);
+			el.style.display = "block";
+			return el;
+		}
+
+		function hideElement(elementId) {
+			var el = document.getElementById(elementId);
+			el.style.display = "none";
+			return el;
+		}
+
+		function showErrorMessage(message) {
+			var msg = showElement("error-message");
+			msg.style = "background-color: #dc3545";
+			msg.textContent = message;
+		}
+
+		function showSuccessMessage(message) {
+			var msg = showElement("error-message");
+			msg.style = "background-color: #20c997";
+			msg.textContent = message;
+		}
+
+
+	</script>
+	</head>
+	<body>
+		<h1> Choose Wi-Fi connection </h1>
+		<div id="error-message" class="item" style="display:none">
+		</div>
+		<div class="item" id="placeHolder" style="display:none">
+			<div class="spinner">
+				<div class="step1"></div>
+				<div class="step2"></div>
+				<div class="step3"></div>
+			</div>
+			<a></a>
+		</div>
+		<div id="connections">
+		</div>
+		<div id="password-input" style="display: none" class="input-group">
+		  <input id="password-input-field" type="password" class="area" placeholder="Wi-fi password" aria-label="Recipient's username">
+		  <div class="input-btn">
+			<button id="send" class="btn" type="button">Submit</button>
+		  </div>
+		</div>
+	</body>
+
+	<script>
+		init();
+	</script>
+</html>

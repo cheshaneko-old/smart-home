@@ -123,8 +123,19 @@
 		}
 
 		async function checkConnection(SSID, password) {
-			await sleep(5000);
-			return "OK"
+			var formData = new FormData();
+			formData.append("SSID", SSID);
+			formData.append("password", password);
+
+			var result = await fetch("/connect", {
+				method: 'POST',
+				body:  formData
+			});
+			if (result.status === 200) {
+				return "OK";
+			} else {
+				return "FAIL";
+			}
 		}
 
 		function sleep(ms) {
@@ -173,7 +184,7 @@
 			var connections = await getWiFiConnections();
 			hideElement("placeHolder");
 			var conHolder = document.getElementById("connections");
-			connections.forEach(con => conHolder.appendChild(createConElement(con.name, con.SSID)));
+			connections.forEach(con => conHolder.appendChild(createConElement(con.name, con.name)));
 		}
 
 		async function init() {

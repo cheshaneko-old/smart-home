@@ -6,8 +6,6 @@
 #include <string>
 
 
-const char* ssid = "SMART";
-
 ESP8266WebServer server(80);
 
 void handleRoot() {
@@ -36,18 +34,54 @@ void handleConnections() {
   server.send(200, "appliation/json; charset=utf-8", connections.c_str());
 }
 
+void handleConnect() {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  } else {
+    String SSID = server.arg("SSID");
+    String password = server.arg("password");
+    Serial.print("SSID: ");
+    Serial.print(SSID);
+    Serial.print(" password: ");
+    Serial.println(password);
+
+    WiFi.begin(SSID, password);
+
+    int threshold = 0;
+    while (WiFi.status() != WL_CONNECTED && threshold < 50) {
+      delay(500);
+      Serial.print(".");
+      ++threshold;
+    }
+    Serial.println("");
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.println("WiFi connected");
+      Serial.println("IP address: ");
+      Serial.println(WiFi.localIP());
+      server.send(200, "text/plain", "OK");
+    } else {
+      Serial.println("Failed to connect");
+      server.send(500, "text/plain", "FAIL");
+
+    }
+  }
+}
+
 void setup(void) {
   delay(1000);
   Serial.begin(115200);
   Serial.println();
   Serial.print("Configuring access point...");
-  WiFi.softAP(ssid);
+  WiFi.softAP("SMART");
 
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
   server.on("/", handleRoot);
   server.on("/connections", handleConnections);
+  server.on("/connect", handleConnect);
   server.begin();
   Serial.println("HTTP server started");
 }

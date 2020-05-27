@@ -132,8 +132,21 @@
 				body:  formData
 			});
 			if (result.status === 200) {
-				return "OK";
+				while(true) {
+					try {
+						var connected = await fetch("/connected");
+						if (connected.status == 200) {
+							return "OK";
+						} else if (connected.status == 500) {
+							return "FAIL";
+						}
+					} catch (error) {
+						console.log(error);
+					}
+					await sleep(1000);
+				}
 			} else {
+
 				return "FAIL";
 			}
 		}

@@ -5,21 +5,30 @@
 #include "Page.h"
 #include <string>
 
-
 ESP8266WebServer server(80);
+
+std::string connections = "[]";
+
+unsigned long scanLastCallMs = 0;
+bool scanEnabled = true;
 
 void handleRoot() {
   server.sendHeader("Content-Encoding", "gzip");
   server.send(200, "text/html; charset=utf-8", (char*) htmlPage, (size_t) sizeof(htmlPage));
 }
 
-void handleConnections() {
-  Serial.println("Start scanning Wi-Fi");
+void scanAndSaveConnections() {
+  if (((millis() - scanLastCallMs) < (1000 * 30)) || !scanEnabled) {
+    return; 
+  }
+  
+  Serial.println("Scan connections");
   int n = WiFi.scanNetworks();
   Serial.print("Found connections: ");
   Serial.println(n);
-  std::string connections = "[";
+
   if (n > 0) {
+    connections = "[";
     for (int i = 0; i < n; ++i) {
       Serial.println(WiFi.SSID(i));
       connections.append("{\"name\": \"");
@@ -29,8 +38,12 @@ void handleConnections() {
         connections.append(",");
       }
     }
+    connections.append("]");
   }
-  connections.append("]");
+  scanLastCallMs = millis();
+}
+
+void handleConnections() {
   server.send(200, "appliation/json; charset=utf-8", connections.c_str());
 }
 
@@ -38,6 +51,7 @@ void handleConnect() {
   if (server.method() != HTTP_POST) {
     server.send(405, "text/plain", "Method Not Allowed");
   } else {
+    scanEnabled = false;
     String SSID = server.arg("SSID");
     String password = server.arg("password");
     Serial.print("SSID: ");
@@ -47,25 +61,24 @@ void handleConnect() {
 
     WiFi.begin(SSID, password);
 
-    int threshold = 0;
-    while (WiFi.status() != WL_CONNECTED && threshold < 50) {
-      delay(500);
-      Serial.print(".");
-      ++threshold;
-    }
-    Serial.println("");
+    server.send(200, "text/plain", "OK");
+  }
+}
 
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      Serial.println("WiFi connected");
-      Serial.println("IP address: ");
-      Serial.println(WiFi.localIP());
-      server.send(200, "text/plain", "OK");
-    } else {
-      Serial.println("Failed to connect");
-      server.send(500, "text/plain", "FAIL");
+void handleConnected() {
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+    server.send(200, "text/plain", "{\"value\":\"OK\"}");
+    scanEnabled = true;
+  } else if (WiFi.status() == WL_IDLE_STATUS || WiFi.status() == WL_DISCONNECTED) {
+    server.send(201, "text/plain", "{\"value\":\"WAIT\"}");
+  } else {
+    Serial.println("Failed to connect");
+    server.send(500, "text/plain", "{\"value\":\"FAIL\"}");
+    scanEnabled = true;
 
-    }
   }
 }
 
@@ -82,11 +95,16 @@ void setup(void) {
   server.on("/", handleRoot);
   server.on("/connections", handleConnections);
   server.on("/connect", handleConnect);
+  server.on("/connected", handleConnected);
+
+  scanAndSaveConnections();
   server.begin();
   Serial.println("HTTP server started");
+
 }
 
 void loop(void) {
   server.handleClient();
   MDNS.update();
+  scanAndSaveConnections();
 }
